@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>DVD Logo</title>
+<style>
+body{
+    margin:0;
+    overflow:hidden;
+    background:black;
+}
+
+#dvd{
+    position:absolute;
+    width:140px;
+    height:70px;
+    background:white;
+    color:black;
+    font-size:40px;
+    font-family:Arial;
+    font-weight:bold;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+</style>
+</head>
+<body>
+
+<div id="dvd">DVD</div>
+
+<script>
+const dvd = document.getElementById("dvd");
+
+let x = 100, y = 100;
+let dx = 3, dy = 3;
+
+function loop(){
+    x += dx;
+    y += dy;
+
+    if(x + dvd.offsetWidth >= window.innerWidth || x <= 0){
+        dx *= -1;
+        dvd.style.background = randomColor();
+    }
+
+    if(y + dvd.offsetHeight >= window.innerHeight || y <= 0){
+        dy *= -1;
+        dvd.style.background = randomColor();
+    }
+
+    dvd.style.left = x + "px";
+    dvd.style.top = y + "px";
+
+    requestAnimationFrame(loop);
+}
+
+function randomColor(){
+    return `hsl(${Math.random()*360},100%,50%)`;
+}
+
+loop();
+</script>
+
+</body>
+</html>

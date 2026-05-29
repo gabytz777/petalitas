@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Useless Notepad</title>
+
+<style>
+body{
+    font-family: Arial;
+    margin:20px;
+    background:white;
+    color:black;
+}
+
+textarea{
+    width:100%;
+    height:350px;
+    resize:none;
+    font-size:16px;
+}
+
+button{
+    margin-top:10px;
+    padding:5px 10px;
+}
+
+.dark{
+    background:#111;
+    color:white;
+}
+
+.dark textarea{
+    background:#222;
+    color:white;
+    border:1px solid #555;
+}
+</style>
+</head>
+<body>
+
+<h1>Useless Notepad</h1>
+
+<textarea id="note" placeholder="write garbage here"></textarea>
+<br>
+
+<button onclick="saveLocal()">Save Local</button>
+<button onclick="saveFile()">Save File</button>
+<button onclick="toggleMode()">Dark/White Mode</button>
+
+<script>
+const note = document.getElementById("note");
+
+window.onload = function () {
+    note.value = localStorage.getItem("uselessNote") || "";
+};
+
+note.addEventListener("input", () => {
+    localStorage.setItem("uselessNote", note.value);
+});
+
+function saveLocal() {
+    localStorage.setItem("uselessNote", note.value);
+    alert("saved to local storage wow");
+}
+
+function saveFile() {
+    const blob = new Blob([note.value], { type: "text/plain" });
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "useless_note.txt";
+    a.click();
+
+    URL.revokeObjectURL(a.href);
+}
+
+function toggleMode() {
+    document.body.classList.toggle("dark");
+}
+</script>
+
+</body>
+</html>

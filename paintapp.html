@@ -1,0 +1,93 @@
+# bad_paint.html
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<title>Bad Paint</title>
+<style>
+body{
+    font-family:Arial;
+    background:#ddd;
+    text-align:center;
+    margin:0;
+}
+
+canvas{
+    border:2px solid black;
+    background:white;
+    cursor:crosshair;
+    touch-action:none;
+}
+
+button,input{
+    margin:5px;
+}
+</style>
+</head>
+<body>
+
+<h1>Bad Paint</h1>
+
+<input type="color" id="color" value="#000000">
+<input type="range" id="size" min="1" max="50" value="5">
+
+<button onclick="clearCanvas()">Clear</button>
+<button onclick="saveImage()">Save</button>
+
+<br>
+
+<canvas id="paint" width="900" height="500"></canvas>
+
+<script>
+const canvas = document.getElementById("paint");
+const ctx = canvas.getContext("2d");
+
+let drawing = false;
+
+function getPos(e){
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+    };
+}
+
+canvas.addEventListener("mousedown", (e) => {
+    drawing = true;
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+});
+
+canvas.addEventListener("mouseup", () => drawing = false);
+canvas.addEventListener("mouseleave", () => drawing = false);
+
+canvas.addEventListener("mousemove", (e) => {
+    if(!drawing) return;
+
+    const pos = getPos(e);
+
+    ctx.strokeStyle = document.getElementById("color").value;
+    ctx.lineWidth = document.getElementById("size").value;
+    ctx.lineCap = "round";
+
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+});
+
+function clearCanvas(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+function saveImage(){
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = "bad_paint.png";
+    a.click();
+}
+</script>
+
+</body>
+</html>
+```
