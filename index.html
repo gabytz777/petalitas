@@ -13,14 +13,12 @@ body {
     height: 100vh;
 }
 
-/* LEFT */
 #main {
     flex: 2;
     padding: 20px;
     overflow-y: auto;
 }
 
-/* RIGHT CHAT */
 #chat {
     flex: 1;
     border-left: 2px solid #ddd;
@@ -90,27 +88,32 @@ button:hover {
 </div>
 
 <script>
+const API = "https://petalitasbackend-production.up.railway.app";
+
+let lastSendTime = 0;
+const COOLDOWN = 2000;
+
 /* =========================
-   USERNAME (no hardcoding)
+   USERNAME (remember + editable)
 ========================= */
 let username = localStorage.getItem("username");
 
 if (!username) {
     username = prompt("Enter username:");
-    if (!username) username = "anonymous";
+    if (!username || !username.trim()) username = "anonymous";
     localStorage.setItem("username", username);
 }
 
-/* =========================
-   API URL
-========================= */
-const API = "https://petalitasbackend-production.up.railway.app";
-
-/* =========================
-   ANTI SPAM COOLDOWN
-========================= */
-let lastSendTime = 0;
-const COOLDOWN = 2000;
+/* optional: edit username anytime with Ctrl + U */
+document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.key.toLowerCase() === "u") {
+        const newName = prompt("Edit username:", username);
+        if (newName && newName.trim()) {
+            username = newName.trim();
+            localStorage.setItem("username", username);
+        }
+    }
+});
 
 /* =========================
    SEND MESSAGE
@@ -125,7 +128,8 @@ async function sendMsg() {
 
     const input = document.getElementById("msgInput");
     const text = input.value;
-    if (!text) return;
+
+    if (!text.trim()) return;
 
     lastSendTime = now;
 
@@ -140,6 +144,13 @@ async function sendMsg() {
 
     input.value = "";
 }
+
+/* ENTER TO SEND */
+document.getElementById("msgInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        sendMsg();
+    }
+});
 
 /* =========================
    LOAD MESSAGES
@@ -161,9 +172,7 @@ async function loadMessages() {
     box.scrollTop = box.scrollHeight;
 }
 
-/* =========================
-   AUTO REFRESH
-========================= */
+/* AUTO REFRESH */
 setInterval(loadMessages, 2000);
 loadMessages();
 </script>
