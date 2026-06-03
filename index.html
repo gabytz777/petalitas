@@ -33,6 +33,10 @@ body {
     background: #fafafa;
 }
 
+.msg {
+    margin: 6px 0;
+}
+
 #inputBox {
     display: flex;
     border-top: 1px solid #ddd;
@@ -55,10 +59,6 @@ button {
 
 button:hover {
     background: #e60073;
-}
-
-.msg {
-    margin: 5px 0;
 }
 </style>
 </head>
@@ -93,9 +93,9 @@ const API = "https://petalitasbackend-production.up.railway.app";
 let lastSendTime = 0;
 const COOLDOWN = 2000;
 
-/* =========================
-   USERNAME (remember + editable)
-========================= */
+/* =====================
+   USERNAME SYSTEM
+===================== */
 let username = localStorage.getItem("username");
 
 if (!username) {
@@ -104,7 +104,12 @@ if (!username) {
     localStorage.setItem("username", username);
 }
 
-/* optional: edit username anytime with Ctrl + U */
+/* =====================
+   SITE DETECTION
+===================== */
+const SITE_NAME = window.location.hostname;
+
+/* Ctrl + U change name */
 document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.key.toLowerCase() === "u") {
         const newName = prompt("Edit username:", username);
@@ -115,9 +120,9 @@ document.addEventListener("keydown", (e) => {
     }
 });
 
-/* =========================
+/* =====================
    SEND MESSAGE
-========================= */
+===================== */
 async function sendMsg() {
     const now = Date.now();
 
@@ -127,34 +132,33 @@ async function sendMsg() {
     }
 
     const input = document.getElementById("msgInput");
-    const text = input.value;
+    const text = input.value.trim();
 
-    if (!text.trim()) return;
+    if (!text) return;
 
     lastSendTime = now;
 
     await fetch(API + "/send", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             user: username,
-            text: text
+            text: text,
+            source: SITE_NAME
         })
     });
 
     input.value = "";
 }
 
-/* ENTER TO SEND */
+/* Enter key */
 document.getElementById("msgInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        sendMsg();
-    }
+    if (e.key === "Enter") sendMsg();
 });
 
-/* =========================
+/* =====================
    LOAD MESSAGES
-========================= */
+===================== */
 async function loadMessages() {
     const res = await fetch(API + "/messages");
     const data = await res.json();
@@ -165,14 +169,24 @@ async function loadMessages() {
     data.forEach(m => {
         const div = document.createElement("div");
         div.className = "msg";
-        div.innerHTML = `<b>${m.user}</b>: ${m.text}`;
+
+        div.innerHTML = `
+            <small>[${m.source || "unknown"}]</small>
+            <b>${escapeHtml(m.user)}</b>: ${escapeHtml(m.text)}
+        `;
+
         box.appendChild(div);
     });
 
     box.scrollTop = box.scrollHeight;
 }
 
-/* AUTO REFRESH */
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 setInterval(loadMessages, 2000);
 loadMessages();
 </script>
