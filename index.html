@@ -13,12 +13,14 @@ body {
     height: 100vh;
 }
 
+/* LEFT SIDE */
 #main {
     flex: 2;
     padding: 20px;
     overflow-y: auto;
 }
 
+/* RIGHT SIDE CHAT */
 #chat {
     flex: 1;
     border-left: 2px solid #ddd;
@@ -26,6 +28,7 @@ body {
     flex-direction: column;
 }
 
+/* MESSAGES */
 #messages {
     flex: 1;
     padding: 10px;
@@ -35,8 +38,10 @@ body {
 
 .msg {
     margin: 6px 0;
+    word-break: break-word;
 }
 
+/* INPUT AREA */
 #inputBox {
     display: flex;
     border-top: 1px solid #ddd;
@@ -65,7 +70,7 @@ button:hover {
 
 <body>
 
-<!-- LEFT SIDE -->
+<!-- LEFT HUB -->
 <div id="main">
     <h1>hub</h1>
 
@@ -88,14 +93,20 @@ button:hover {
 </div>
 
 <script>
+/* =========================
+   API
+========================= */
 const API = "https://petalitasbackend-production.up.railway.app";
 
+/* =========================
+   COOLDOWN
+========================= */
 let lastSendTime = 0;
 const COOLDOWN = 2000;
 
-/* =====================
+/* =========================
    USERNAME SYSTEM
-===================== */
+========================= */
 let username = localStorage.getItem("username");
 
 if (!username) {
@@ -104,12 +115,7 @@ if (!username) {
     localStorage.setItem("username", username);
 }
 
-/* =====================
-   SITE DETECTION
-===================== */
-const SITE_NAME = window.location.hostname;
-
-/* Ctrl + U change name */
+/* allow edit username */
 document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.key.toLowerCase() === "u") {
         const newName = prompt("Edit username:", username);
@@ -120,9 +126,14 @@ document.addEventListener("keydown", (e) => {
     }
 });
 
-/* =====================
+/* =========================
+   FIXED DOMAIN DETECTION
+========================= */
+const SITE_NAME = window.location.hostname || "unknown-site";
+
+/* =========================
    SEND MESSAGE
-===================== */
+========================= */
 async function sendMsg() {
     const now = Date.now();
 
@@ -151,14 +162,14 @@ async function sendMsg() {
     input.value = "";
 }
 
-/* Enter key */
+/* ENTER TO SEND */
 document.getElementById("msgInput").addEventListener("keydown", (e) => {
     if (e.key === "Enter") sendMsg();
 });
 
-/* =====================
+/* =========================
    LOAD MESSAGES
-===================== */
+========================= */
 async function loadMessages() {
     const res = await fetch(API + "/messages");
     const data = await res.json();
@@ -171,7 +182,7 @@ async function loadMessages() {
         div.className = "msg";
 
         div.innerHTML = `
-            <small>[${m.source || "unknown"}]</small>
+            <small>[${escapeHtml(m.source || "unknown")}]</small>
             <b>${escapeHtml(m.user)}</b>: ${escapeHtml(m.text)}
         `;
 
@@ -181,12 +192,14 @@ async function loadMessages() {
     box.scrollTop = box.scrollHeight;
 }
 
+/* SAFE TEXT */
 function escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
 }
 
+/* AUTO UPDATE */
 setInterval(loadMessages, 2000);
 loadMessages();
 </script>
