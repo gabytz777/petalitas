@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Catch The Dots</title>
+
+<style>
+@font-face {
+    font-family: 'MagicYellow';
+    /* Ensure MagicYellow.otf is placed in the exact same folder as this HTML file */
+    src: url("MagicYellow.otf") format("opentype");
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    background:black;
+    color:white;
+    overflow:hidden;
+    font-family:Arial,sans-serif;
+    user-select: none;
+}
+
+#menu,#game{
+    width:100vw;
+    height:100vh;
+}
+
+#menu{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+
+#title {
+    font-family: 'MagicYellow'; /* Strictly forced to use your loaded file */
+    font-size: clamp(45px, 6vw, 110px);
+    margin-top: 80px; /* Centered nicely down from the very top border */
+    text-align: center;
+    width: 100%;
+    letter-spacing: 2px;
+}
+
+#center{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    gap:35px;
+}
+
+.menuButton{
+    background:none;
+    border:none;
+    color:white;
+    font-size:38px;
+    cursor:pointer;
+    transition: transform 0.1s ease;
+}
+
+.menuButton:hover{
+    transform:scale(1.05);
+}
+
+#muteBtn{
+    position:absolute;
+    top:15px;
+    right:15px;
+    font-size:30px;
+    cursor:pointer;
+    z-index: 20;
+}
+
+#creditsPopup{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.95);
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+    flex-direction:column;
+    font-size:30px;
+    gap:20px;
+    z-index: 15;
+}
+
+#game{
+    display:none;
+    position:relative;
+}
+
+#clickToStartOverlay,
+#gameOverPopup{
+    display:flex;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.95);
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+    flex-direction:column;
+    font-size:40px;
+    gap:20px;
+    color:white;
+    z-index:10;
+}
+
+#clickToStartOverlay{
+    cursor:pointer;
+}
+
+#gameOverPopup{
+    display:none;
+    padding:20px;
+}
+
+#gameOverPopup span{
+    display:block;
+    margin-top:15px;
+    font-size:32px;
+}
+
+.stress #time,
+.stress #score{
+    color:#ff0044;
+    text-shadow:0 0 20px rgba(255,0,0,.8);
+}
+
+@keyframes pulse{
+    from{opacity:1;}
+    to{opacity:.4;}
+}
+
+.stress #hud{
+    animation:pulse .3s ease-in-out infinite alternate;
+}
+
+#hud{
+    position:absolute;
+    top:0;
+    left:0;
+    font-family: 'MagicYellow', Arial, sans-serif;
+    font-size:40px;
+    padding:15px;
+    z-index:1;
+    pointer-events:none;
+}
+
+canvas{
+    position:absolute;
+    top:0;
+    left:0;
+    display:block;
+}
+</style>
+</head>
+<body>
+
+<div id="muteBtn">🔊</div>
+
+<div id="menu">
+    <div id="title">CATCH THE DOTS</div>
+    <div id="center">
+        <button class="menuButton" id="startBtn">start game</button>
+        <button class="menuButton" id="creditsBtn">credits</button>
+        <div style="font-size:38px">
+            CURRENT HIGHSCORE: <span id="menuHighscore">0</span>
+        </div>
+    </div>
+</div>
+
+<div id="creditsPopup">
+    <div>
+        creator of the game - me
+        <br><br>
+        background music - Toby Fox, Sans.
+        <br><br>
+        sound effects are from myinstants.com
+    </div>
+    <button class="menuButton" id="closeCredits">close</button>
+</div>
+
+<div id="clickToStartOverlay">
+    <div>CLICK TO START</div>
+</div>
+
+<div id="gameOverPopup">
+    <div id="gameOverText">Good job! Final score: 0</div>
+    <span>Click anywhere to return to the menu</span>
+</div>
+
+<div id="game">
+    <div id="hud">
+        CURRENT SCORE: <span id="score">0</span><br>
+        HIGH SCORE: <span id="highscore">0</span><br>
+        TIME LEFT: <span id="time">120</span>
+    </div>
+    <canvas id="canvas"></canvas>
+</div>
+
+<audio id="startMusic" src="start.mp3"></audio>
+<audio id="backgroundMusic" src="background.mp3"></audio>
+<audio id="danceAudio" src="dance.mp3"></audio>
+<audio id="hoverSound" src="hover-sound-effect.mp3"></audio>
+<audio id="clickSound" src="clicksoundeffect.mp3"></audio>
+
+<script>
+const startMusic = document.getElementById("startMusic");
+const backgroundMusic = document.getElementById("backgroundMusic");
+const danceAudio = document.getElementById("danceAudio");
+const hoverSound = document.getElementById("hoverSound");
+const clickSound = document.getElementById("clickSound");
+
+let muted = false;
+let audioUnlocked = false;
+let mouseTarget = null;
+let previousHighScore = 0;
+let isUsingMouse = false; 
+let introStarted = false;
+let gameRunning = false;
+let timeLeft = 120;
+
+startMusic.onended = () => {
+    if (gameRunning) {
+        startBackground();
+    }
+};
+
+function playHover() {
+    if (muted) return;
+    hoverSound.currentTime = 0;
+    hoverSound.play().catch(() => {});
+}
+
+function tryPlayIntro() {
+    if (muted || !audioUnlocked || introStarted) return;
+    startMusic.currentTime = 0;
+    startMusic.play().then(() => {
+        introStarted = true;
+    }).catch(() => {});
+}
+
+function initAudio() {
+    audioUnlocked = true;
+}
+
+function startBackground() {
+    if (muted) return;
+    backgroundMusic.currentTime = 1;
+    backgroundMusic.loop = true;
+    backgroundMusic.play().catch(() => {});
+}
+
+function playClick() {
+    if (muted) return;
+    clickSound.currentTime = 0;
+    clickSound.play().catch(() => {});
+}
+
+document.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("mouseenter", playHover);
+    btn.addEventListener("click", playClick);
+});
+
+document.getElementById("muteBtn").onclick = () => {
+    muted = !muted;
+    [startMusic, backgroundMusic, danceAudio, hoverSound, clickSound].forEach(a => a.muted = muted);
+    document.getElementById("muteBtn").textContent = muted ? "🔇" : "🔊";
+};
+
+document.getElementById("creditsBtn").onclick = () => {
+    document.getElementById("creditsPopup").style.display = "flex";
+};
+
+document.getElementById("closeCredits").onclick = () => {
+    document.getElementById("creditsPopup").style.display = "none";
+};
+
+let score = 0;
+let highScore = Number(localStorage.getItem("catchDotsHighScore")) || 0;
+
+document.getElementById("menuHighscore").textContent = highScore;
+document.getElementById("highscore").textContent = highScore;
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const hudHeight = 140; 
+let lastTime = performance.now();
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+const player = {
+    x: 400,
+    y: 300,
+    size: 30,
+    speed: 380 
+};
+
+const keys = {};
+
+window.addEventListener("keydown", e => {
+    keys[e.key.toLowerCase()] = true;
+    isUsingMouse = false; 
+});
+
+window.addEventListener("keyup", e => {
+    keys[e.key.toLowerCase()] = false;
+});
+
+canvas.addEventListener("mousemove", e => {
+    const rect = canvas.getBoundingClientRect();
+    mouseTarget = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+    };
+    isUsingMouse = true; 
+});
+
+canvas.addEventListener("mouseleave", () => {
+    mouseTarget = null;
+});
+
+let dot = { x: 200, y: 200, size: 12 };
+
+function newDot() {
+    dot.x = dot.size + Math.random() * (canvas.width - dot.size * 2);
+    dot.y = hudHeight + dot.size + Math.random() * (canvas.height - hudHeight - dot.size * 2);
+}
+
+function startGame() {
+    document.getElementById("menu").style.display = "none";
+    document.getElementById("game").style.display = "block";
+    document.getElementById("gameOverPopup").style.display = "none";
+    document.getElementById("game").classList.remove("stress");
+    
+    player.x = canvas.width / 2;
+    player.y = hudHeight + (canvas.height - hudHeight) / 2;
+    newDot();
+    
+    score = 0;
+    timeLeft = 120;
+    document.getElementById("score").textContent = score;
+    document.getElementById("time").textContent = timeLeft;
+    previousHighScore = highScore;
+
+    if (audioUnlocked && !muted && !introStarted) {
+        tryPlayIntro();
+    } else if (introStarted && (startMusic.ended || startMusic.paused)) {
+        startBackground();
+    }
+
+    gameRunning = true;
+}
+
+document.getElementById("clickToStartOverlay").addEventListener("click", () => {
+    initAudio();
+    tryPlayIntro();
+    document.getElementById("clickToStartOverlay").style.display = "none";
+    document.getElementById("menu").style.display = "flex";
+});
+
+document.getElementById("startBtn").addEventListener("click", () => {
+    if (!audioUnlocked) {
+        initAudio();
+        tryPlayIntro();
+    }
+    startGame();
+});
+
+document.getElementById("gameOverPopup").addEventListener("click", () => {
+    document.getElementById("gameOverPopup").style.display = "none";
+    document.getElementById("game").style.display = "none";
+    document.getElementById("menu").style.display = "flex";
+    backgroundMusic.pause();
+    danceAudio.pause();
+    danceAudio.currentTime = 0;
+    document.getElementById("menuHighscore").textContent = highScore;
+    document.getElementById("highscore").textContent = highScore;
+});
+
+setInterval(() => {
+    if (!gameRunning) return;
+
+    timeLeft--;
+    document.getElementById("time").textContent = timeLeft;
+    document.getElementById("game").classList.toggle("stress", timeLeft <= 20);
+
+    if (timeLeft <= 0) {
+        showGameOver();
+    }
+}, 1000);
+
+function showGameOver() {
+    gameRunning = false;
+    backgroundMusic.pause();
+    startMusic.pause();
+    const gameOverText = document.getElementById("gameOverText");
+    gameOverText.textContent = `Good job! Final score: ${score}`;
+    document.getElementById("gameOverPopup").style.display = "flex";
+    
+    const beatHighScore = score > previousHighScore;
+    if (beatHighScore && !muted) {
+        danceAudio.currentTime = 0;
+        danceAudio.play().catch(() => {});
+    }
+}
+
+function update(dt) {
+    if (!gameRunning) return;
+
+    if (!isUsingMouse) {
+        if (keys["w"] || keys["arrowup"]) player.y -= player.speed * dt;
+        if (keys["s"] || keys["arrowdown"]) player.y += player.speed * dt;
+        if (keys["a"] || keys["arrowleft"]) player.x -= player.speed * dt;
+        if (keys["d"] || keys["arrowright"]) player.x += player.speed * dt;
+    }
+
+    if (isUsingMouse && mouseTarget) {
+        const mdx = mouseTarget.x - player.x;
+        const mdy = mouseTarget.y - player.y;
+        const t = 1 - Math.exp(-dt / 0.1); 
+        player.x += mdx * t;
+        player.y += mdy * t;
+    }
+
+    player.x = Math.max(player.size / 2, Math.min(canvas.width - player.size / 2, player.x));
+    player.y = Math.max(hudHeight, Math.min(canvas.height - player.size / 2, player.y));
+
+    const closestX = Math.max(player.x - player.size / 2, Math.min(dot.x, player.x + player.size / 2));
+    const closestY = Math.max(player.y - player.size / 2, Math.min(dot.y, player.y + player.size / 2));
+    const distanceX = dot.x - closestX;
+    const distanceY = dot.y - closestY;
+    const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+
+    if (distanceSquared < (dot.size * dot.size)) {
+        score++;
+        document.getElementById("score").textContent = score;
+
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem("catchDotsHighScore", highScore);
+            document.getElementById("highscore").textContent = highScore;
+            document.getElementById("menuHighscore").textContent = highScore;
+        }
+        newDot();
+    }
+}
+
+function draw() {
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "yellow";
+    ctx.beginPath();
+    ctx.arc(dot.x, dot.y, dot.size, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "lime";
+    ctx.fillRect(
+        player.x - player.size / 2,
+        player.y - player.size / 2,
+        player.size,
+        player.size
+    );
+}
+
+function loop(now) {
+    const dt = Math.min((now - lastTime) / 1000, 0.1);
+    lastTime = now;
+
+    update(dt);
+    draw();
+
+    requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
